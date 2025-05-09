@@ -1,3 +1,9 @@
+---
+import 'lenis/dist/lenis.css';
+
+const { title } = Astro.props;
+---
+
 <!doctype html>
 <html lang="en">
 	<head>
@@ -7,10 +13,98 @@
 		<meta name="generator" content={Astro.generator} />
 		<title>Astro Basics</title>
 	</head>
-	<body>
-		<slot />
+	<body data-barba="wrapper">
+		<main id={title} data-barba="container" data-barba-namespace={title}>
+			<div data-scroll-container>
+				<slot />
+			</div>
+		</main>
 	</body>
 </html>
+
+<script>
+	// @ts-ignore
+	import barba from '@barba/core';
+	import Lenis from "lenis";
+	import gsap from 'gsap';
+	import ScrollTrigger from 'gsap/ScrollTrigger';
+
+	gsap.registerPlugin(ScrollTrigger);
+
+	let scroll: Lenis;
+
+	const initSmoothScroll = (container: HTMLElement) => {
+		scroll = new Lenis({ content: container });
+
+		window.onresize = scroll.resize;
+
+		scroll.on('scroll', ScrollTrigger.update);
+		gsap.ticker.add((time) => {scroll.raf(time * 1000);});
+		gsap.ticker.lagSmoothing(0);
+
+		history.scrollRestoration = 'manual';
+		window.history.scrollRestoration = 'manual';
+	};
+
+	barba.hooks.after(() => {
+	});
+
+  barba.hooks.enter(() => {
+		scroll.destroy();
+  });
+
+	barba.hooks.afterEnter(() => {
+		scroll.destroy();
+		scroll.scrollTo(0, { duration: 0.1 });
+  });
+
+	barba.init({
+    sync: true,
+    debug: false,
+    timeout: 7000,
+    transitions: [{
+      name: 'default',
+      once(data: any) {
+				// Init scripts
+				initSmoothScroll(data.next.container);
+      },
+			async beforeLeave(data: any) {
+			},
+      async leave(data: any) {
+				console.log('Leave');
+
+				// Animation
+        data.current.container.remove();
+      },
+      async enter(data: any) {
+				console.log('Enter')
+      },
+      async beforeEnter(data: any) {
+				// Cleaning
+        ScrollTrigger.getAll().forEach(t => t.kill());
+				scroll.destroy();
+
+				// Init scripts
+				initSmoothScroll(data.next.container);
+      },
+			async afterEnter() {
+			}
+    },
+		{
+      name: 'to-page',
+      from: { },
+      to: { namespace: ['Home'] },
+			async leave(data: any) {
+				console.log('Leave');
+			},
+      async enter(data: any) {
+				// Init scripts
+				console.log('Enter');
+				initSmoothScroll(data.next.container);
+      }
+		}],
+  });
+</script>
 
 <style>
 	html,
